@@ -1,50 +1,44 @@
 # Azure IAM / RBAC Automation
 
-Python-based Azure identity and access automation project demonstrating Microsoft Entra ID, Azure RBAC, managed identities, least-privilege role assignments, policy validation, and audit reporting.
+A small Python project for automating and checking Azure RBAC assignments.
 
-## What this demonstrates
+I built this around a common cloud-operations problem: access changes tend to become messy when they are done manually. The idea here is to keep the requested assignments in configuration, validate them before making changes, and have an audit output that can be reviewed later.
 
-- Azure identity and access automation with Python
-- Microsoft Entra ID application and service-principal concepts
-- Azure RBAC role-assignment automation
-- Managed identity patterns for workloads
-- Declarative role-assignment configuration
-- Detection of overly broad `Owner` / `Contributor` assignments
-- Scope validation for subscription, resource-group, and resource scopes
-- Audit-friendly JSON reports
-- Dry-run operation for safe changes
-- Unit testing without live Azure changes
-- CI checks with GitHub Actions
+## What it covers
 
-> Portfolio implementation based on Azure patterns. It is not presented as an employer production system.
+- Azure RBAC role assignments
+- Microsoft Entra ID / service-principal concepts
+- Managed identity patterns
+- Least-privilege checks
+- Scope checks for subscriptions, resource groups, and resources
+- Dry-run support
+- JSON audit output
+- Unit tests without making live Azure changes
 
-## Architecture
+This is a portfolio implementation. It is meant to show the way I approach access automation, not to suggest that it is a complete enterprise IAM platform.
+
+## How it works
 
 ```text
-YAML configuration
-       |
-       v
-+-------------------+
-| IAM/RBAC Manager  |
-+---------+---------+
-          |
-    +-----+------+
-    |            |
-    v            v
-Validator    Azure SDK
-    |            |
-    +------> RBAC assignments
-                 |
-                 v
-            Audit report
+role-assignment config
+        |
+        v
+   validation
+        |
+   +----+----+
+   |         |
+ dry-run   Azure API
+   |         |
+   +----+----+
+        |
+     audit report
 ```
 
-## Repository structure
+## Repository layout
 
 ```text
 .
 ├── iam_automation/
-│   ├── __init__.py
 │   ├── client.py
 │   ├── manager.py
 │   ├── policies.py
@@ -55,58 +49,47 @@ Validator    Azure SDK
 ├── scripts/
 │   └── audit_assignments.py
 ├── tests/
-│   ├── test_policies.py
-│   └── test_validator.py
 ├── .github/workflows/ci.yml
 ├── requirements.txt
 ├── pyproject.toml
-├── .gitignore
 └── README.md
 ```
 
-## Example workflow
+## Example
+
+The example configuration describes an Azure principal, role, and scope. Before an assignment is created, the validator looks for things I would normally question during an access review.
+
+For example:
+
+- Why does this workload need `Owner`?
+- Can `Contributor` be replaced with a narrower role?
+- Does the assignment really need subscription scope?
+- Is the principal identified correctly?
+
+Run the validation locally with:
 
 ```bash
 python -m iam_automation.validator config/example_assignments.yaml
+```
+
+For an audit run without changing Azure:
+
+```bash
 python scripts/audit_assignments.py --config config/example_assignments.yaml --dry-run
 ```
 
-The examples are intentionally safe. No Azure credentials, client secrets, or tokens are committed.
+## Authentication
 
-## Security controls
+The Azure client uses `DefaultAzureCredential`. That keeps credentials out of the code and lets the same code work with Azure CLI authentication locally and managed/workload identity in an Azure environment.
 
-The validator flags common Azure RBAC risks including:
+Never commit client secrets, certificates, tokens, or subscription credentials.
 
-- `Owner` assignments where a narrower role should be used
-- `Contributor` assignments where a service-specific role is sufficient
-- Subscription-wide assignments when resource-group or resource scope is possible
-- Missing or overly broad scopes
-- Unexpected role definitions
+## Why I built it this way
 
-This is a lightweight portfolio validator, not a replacement for Microsoft Entra governance, Azure Policy, or enterprise access-review tooling.
+I kept the Azure API calls behind a small client layer so the validation logic does not need a live Azure subscription to be tested. The policy and validation code can therefore be exercised with normal unit tests.
 
-## Engineering principles
-
-### Least privilege
-
-Prefer the narrowest built-in Azure role and smallest practical scope for a workload.
-
-### Workload identity
-
-Prefer managed identities and federated identity patterns over long-lived client secrets.
-
-### Declarative configuration
-
-Role assignments are defined outside the implementation so access changes can be reviewed and version controlled.
-
-### Safe execution
-
-The CLI supports dry-run operation before making Azure changes.
-
-### Testability
-
-Azure API interactions are isolated behind a client layer so policy and validation logic can be tested without live Azure calls.
+The next logical step would be to add Microsoft Entra access-review integration and Azure Resource Graph discovery, but I have intentionally kept this version focused on RBAC automation.
 
 ## Technologies
 
-**Python · Azure SDK · Microsoft Entra ID · Azure RBAC · Managed Identity · Azure Resource Manager · YAML · pytest · GitHub Actions · Cloud Security · DevOps · SRE**
+**Python · Azure SDK · Microsoft Entra ID · Azure RBAC · Managed Identity · YAML · pytest · GitHub Actions**
