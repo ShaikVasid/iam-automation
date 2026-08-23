@@ -1,35 +1,36 @@
-"""Lightweight static checks for common IAM policy risks."""
+"""Azure RBAC security validation helpers."""
 
 from __future__ import annotations
 
 from typing import Any
 
+BROAD_ROLES = {"Owner", "Contributor", "User Access Administrator"}
 
-RISKY_ACTIONS = {"*", "iam:*", "sts:*"}
 
-
-def validate_policy(policy: dict[str, Any]) -> list[str]:
-    """Return findings for broad Allow statements."""
+def validate_assignment(assignment: dict[str, Any]) -> list[str]:
+    """Return security findings for an Azure RBAC assignment."""
     findings: list[str] = []
+    role = assignment.get("role", "")
+    scope = assignment.get("scope", "")
 
-    for index, statement in enumerate(policy.get("Statement", [])):
-        if statement.get("Effect") != "Allow":
-            continue
+    if role in BROAD_ROLES:
+        findings.append(f"Broad role detected: {role}")
 
-        actions = statement.get("Action", [])
-        resources = statement.get("Resource", [])
-        if isinstance(actions, str):
-            actions = [actions]
-        if isinstance(resources, str):
-            resources = [resources]
+    if scope.lower().startswith("/subscriptions/") and scope.lower().count("/") == 2:
+        findings.append("Subscription-wide scope detected; prefer resource-group or resource scope")
 
-        if any(action in RISKY_ACTIONS for action in actions):
-            findings.append(f"statement[{index}]: broad IAM action permission")
-        if "*" in resources:
-            findings.append(f"statement[{index}]: wildcard resource")
-        if not actions:
-            findings.append(f"statement[{index}]: missing Action")
-        if not resources:
-            findings.append(f"statement[{index}]: missing Resource")
+    if not assignment.get("principal_id"):
+        findings.append("Missing principal_id")
+
+    if not scope:
+        findings.append("Missing RBAC scope")
 
     return findings
+
+
+def validate_assignments(assignments: list[dict[str, Any]]) -> dict[str, list[str]]:
+    return {
+        str(index): validate_assignment(assignment)
+        for index, assignment in enumerate(assignments)
+        if validate_assignment(assignment)
+    }
