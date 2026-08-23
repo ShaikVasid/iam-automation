@@ -1,22 +1,24 @@
-"""AWS IAM client wrapper."""
+"""Azure Resource Manager client abstraction."""
 
-from __future__ import annotations
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.authorization import AuthorizationManagementClient
 
-import boto3
 
+class AzureAuthorizationClient:
+    """Small wrapper around Azure RBAC APIs.
 
-class IAMClient:
-    """Thin wrapper around boto3 IAM APIs."""
+    DefaultAzureCredential supports local Azure CLI authentication, managed
+    identity, workload identity, and other standard Azure credential sources.
+    """
 
-    def __init__(self, client=None):
-        self.client = client or boto3.client("iam")
+    def __init__(self, subscription_id: str):
+        self.subscription_id = subscription_id
+        credential = DefaultAzureCredential()
+        self.client = AuthorizationManagementClient(credential, subscription_id)
 
-    def list_roles(self) -> list[dict]:
-        roles: list[dict] = []
-        paginator = self.client.get_paginator("list_roles")
-        for page in paginator.paginate():
-            roles.extend(page.get("Roles", []))
-        return roles
+    def list_role_assignments(self, scope: str | None = None):
+        target_scope = scope or f"/subscriptions/{self.subscription_id}"
+        return self.client.role_assignments.list_for_scope(target_scope)
 
-    def get_role(self, role_name: str) -> dict:
-        return self.client.get_role(RoleName=role_name)["Role"]
+    def create_role_assignment(self, scope: str, assignment_id: str, parameters: dict):
+        return self.client.role_assignments.create(scope, assignment_id, parameters)
