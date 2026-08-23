@@ -1,37 +1,42 @@
-# IAM Automation
+# Azure IAM / RBAC Automation
 
-Python-based AWS IAM automation project demonstrating identity lifecycle automation, least-privilege policy generation, policy validation, and audit reporting.
+Python-based Azure identity and access automation project demonstrating Microsoft Entra ID, Azure RBAC, managed identities, least-privilege role assignments, policy validation, and audit reporting.
 
 ## What this demonstrates
 
-- AWS IAM automation with Python and boto3
-- Create and manage IAM roles
-- Generate least-privilege policy documents from declarative configuration
-- Detect wildcard permissions and risky policy statements
-- Produce audit-friendly JSON reports
-- Dry-run mode for safe operational workflows
-- Unit testing with mocked AWS APIs
+- Azure identity and access automation with Python
+- Microsoft Entra ID application and service-principal concepts
+- Azure RBAC role-assignment automation
+- Managed identity patterns for workloads
+- Declarative role-assignment configuration
+- Detection of overly broad `Owner` / `Contributor` assignments
+- Scope validation for subscription, resource-group, and resource scopes
+- Audit-friendly JSON reports
+- Dry-run operation for safe changes
+- Unit testing without live Azure changes
 - CI checks with GitHub Actions
 
-> Portfolio implementation. It is designed to demonstrate engineering practices and is not presented as an employer production system.
+> Portfolio implementation based on Azure patterns. It is not presented as an employer production system.
 
 ## Architecture
 
 ```text
-YAML/JSON configuration
-          |
-          v
-   +--------------+
-   | IAM Manager  |
-   +------+-------+
+YAML configuration
+       |
+       v
++-------------------+
+| IAM/RBAC Manager  |
++---------+---------+
           |
     +-----+------+
     |            |
     v            v
-Policy       AWS IAM API
-Validator         |
-    |             v
-    +-------> Audit Report
+Validator    Azure SDK
+    |            |
+    +------> RBAC assignments
+                 |
+                 v
+            Audit report
 ```
 
 ## Repository structure
@@ -41,17 +46,17 @@ Validator         |
 ├── iam_automation/
 │   ├── __init__.py
 │   ├── client.py
+│   ├── manager.py
 │   ├── policies.py
 │   ├── validator.py
-│   ├── manager.py
 │   └── report.py
 ├── config/
-│   └── example_roles.yaml
+│   └── example_assignments.yaml
+├── scripts/
+│   └── audit_assignments.py
 ├── tests/
 │   ├── test_policies.py
 │   └── test_validator.py
-├── scripts/
-│   └── audit_roles.py
 ├── .github/workflows/ci.yml
 ├── requirements.txt
 ├── pyproject.toml
@@ -62,43 +67,46 @@ Validator         |
 ## Example workflow
 
 ```bash
-python -m iam_automation.validator config/example_roles.yaml
-
-python scripts/audit_roles.py --config config/example_roles.yaml --dry-run
+python -m iam_automation.validator config/example_assignments.yaml
+python scripts/audit_assignments.py --config config/example_assignments.yaml --dry-run
 ```
 
-The default examples are intentionally safe. No credentials are committed and the example audit workflow uses dry-run mode.
+The examples are intentionally safe. No Azure credentials, client secrets, or tokens are committed.
 
 ## Security controls
 
-The validator flags common IAM risks including:
+The validator flags common Azure RBAC risks including:
 
-- `Action: *`
-- `Resource: *`
-- Allow statements without an explicit resource boundary
-- Unexpected IAM actions
-- Policies that are broader than the declared service scope
+- `Owner` assignments where a narrower role should be used
+- `Contributor` assignments where a service-specific role is sufficient
+- Subscription-wide assignments when resource-group or resource scope is possible
+- Missing or overly broad scopes
+- Unexpected role definitions
 
-This is a lightweight portfolio validator, not a replacement for AWS IAM Access Analyzer or an enterprise policy-governance platform.
+This is a lightweight portfolio validator, not a replacement for Microsoft Entra governance, Azure Policy, or enterprise access-review tooling.
 
 ## Engineering principles
 
 ### Least privilege
 
-Policies should grant only the actions required by the workload and constrain resources whenever practical.
+Prefer the narrowest built-in Azure role and smallest practical scope for a workload.
+
+### Workload identity
+
+Prefer managed identities and federated identity patterns over long-lived client secrets.
 
 ### Declarative configuration
 
-Role definitions live outside the Python implementation so the automation can be reviewed and version controlled.
+Role assignments are defined outside the implementation so access changes can be reviewed and version controlled.
 
 ### Safe execution
 
-The CLI supports dry-run operation before making AWS changes.
+The CLI supports dry-run operation before making Azure changes.
 
 ### Testability
 
-AWS API interactions are isolated behind a client layer so business logic can be tested without making live AWS calls.
+Azure API interactions are isolated behind a client layer so policy and validation logic can be tested without live Azure calls.
 
 ## Technologies
 
-**Python · boto3 · AWS IAM · JSON · YAML · pytest · GitHub Actions · Cloud Security · DevOps · SRE**
+**Python · Azure SDK · Microsoft Entra ID · Azure RBAC · Managed Identity · Azure Resource Manager · YAML · pytest · GitHub Actions · Cloud Security · DevOps · SRE**
