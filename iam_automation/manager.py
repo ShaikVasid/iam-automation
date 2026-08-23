@@ -1,27 +1,42 @@
-"""IAM role lifecycle operations with dry-run support."""
+"""Azure RBAC role-assignment lifecycle operations."""
 
 from __future__ import annotations
 
-import json
+from typing import Any
 
-from .client import IAMClient
+from .client import AzureAuthorizationClient
+from .policies import build_role_assignment
 
 
 class RoleManager:
-    def __init__(self, client: IAMClient | None = None):
-        self.iam = client or IAMClient()
+    """Manage Azure RBAC assignments through a small testable abstraction."""
 
-    def audit(self) -> list[dict]:
-        """Return a normalized inventory of IAM roles."""
+    def __init__(self, client: AzureAuthorizationClient):
+        self.client = client
+
+    def list_assignments(self, scope: str | None = None) -> list[dict[str, Any]]:
+        """Return a normalized list of role assignments."""
+        assignments = self.client.list_role_assignments(scope)
         return [
             {
-                "role_name": role["RoleName"],
-                "arn": role["Arn"],
-                "path": role.get("Path", "/"),
+                "id": assignment.id,
+                "principal_id": assignment.principal_id,
+                "role_definition_id": assignment.role_definition_id,
+                "scope": assignment.scope,
             }
-            for role in self.iam.list_roles()
+            for assignment in assignments
         ]
 
-    @staticmethod
-    def render_audit(roles: list[dict]) -> str:
-        return json.dumps(roles, indent=2, default=str)
+    def create_assignment(
+        self,
+        principal_id: str,
+        role_definition_id: str,
+        scope: str,
+        assignment_id: str,
+    ) -> Any:
+        """Create an Azure RBAC role assignment."""
+        parameters = build_role_assignment(
+            principal_id=principal_id,
+            role_definition_id=role_definition_id,
+        )
+        return self.client.create_role_assignment(scope, assignment_id, parameters)
