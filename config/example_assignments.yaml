@@ -1,0 +1,10 @@
+assignments:
+  - name: app-reader
+    principal_id: "00000000-0000-0000-0000-000000000001"
+    role: Reader
+    scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-example"
+
+  - name: overly-broad-access
+    principal_id: "00000000-0000-0000-0000-000000000002"
+    role: Contributor
+    scope: "/subscriptions/00000000-0000-0000-0000-000000000000"
