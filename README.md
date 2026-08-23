@@ -1,37 +1,35 @@
 # Azure IAM / RBAC Automation
 
-A small Python project for automating and checking Azure RBAC assignments.
+A Python project for automating and validating **Azure RBAC assignments** with a focus on least privilege, scope control, auditability, and testability.
 
-I built this around a common cloud-operations problem: access changes tend to become messy when they are done manually. The idea here is to keep the requested assignments in configuration, validate them before making changes, and have an audit output that can be reviewed later.
+The project treats access changes as configuration: validate the requested assignment first, run an audit without changing Azure, and keep the Azure SDK behind a small client layer.
 
 ## What it covers
 
 - Azure RBAC role assignments
-- Microsoft Entra ID / service-principal concepts
+- Microsoft Entra ID and service-principal concepts
 - Managed identity patterns
-- Least-privilege checks
-- Scope checks for subscriptions, resource groups, and resources
-- Dry-run support
-- JSON audit output
-- Unit tests without making live Azure changes
+- Least-privilege validation
+- Subscription, resource-group, and resource scope checks
+- Dry-run style audit workflow
+- JSON audit reports
+- Unit tests without requiring a live Azure change
+- GitHub Actions CI
 
-This is a portfolio implementation. It is meant to show the way I approach access automation, not to suggest that it is a complete enterprise IAM platform.
-
-## How it works
+## Architecture
 
 ```text
-role-assignment config
-        |
-        v
-   validation
-        |
+YAML configuration
+        ↓
+Validation / policy checks
+        ↓
    +----+----+
    |         |
- dry-run   Azure API
+ Audit     Azure SDK
    |         |
    +----+----+
-        |
-     audit report
+        ↓
+   JSON report
 ```
 
 ## Repository layout
@@ -39,6 +37,7 @@ role-assignment config
 ```text
 .
 ├── iam_automation/
+│   ├── __init__.py
 │   ├── client.py
 │   ├── manager.py
 │   ├── policies.py
@@ -49,47 +48,112 @@ role-assignment config
 ├── scripts/
 │   └── audit_assignments.py
 ├── tests/
-├── .github/workflows/ci.yml
+│   └── test_validator.py
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── requirements.txt
 ├── pyproject.toml
 └── README.md
 ```
 
-## Example
+## Example configuration
 
-The example configuration describes an Azure principal, role, and scope. Before an assignment is created, the validator looks for things I would normally question during an access review.
+```yaml
+assignments:
+  - name: app-reader
+    principal_id: "<principal-id>"
+    role: Reader
+    scope: "/subscriptions/<subscription-id>/resourceGroups/rg-example"
+```
 
-For example:
+Before making an access change, the validator checks questions such as:
 
-- Why does this workload need `Owner`?
-- Can `Contributor` be replaced with a narrower role?
-- Does the assignment really need subscription scope?
+- Does the workload really need `Owner` or `Contributor`?
+- Can a narrower built-in role be used?
+- Does the assignment need subscription scope?
 - Is the principal identified correctly?
+- Is the RBAC scope present and valid?
 
-Run the validation locally with:
+## Run an audit
 
-```bash
-python -m iam_automation.validator config/example_assignments.yaml
-```
-
-For an audit run without changing Azure:
+Install the dependencies:
 
 ```bash
-python scripts/audit_assignments.py --config config/example_assignments.yaml --dry-run
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## Authentication
+Run the local configuration audit:
 
-The Azure client uses `DefaultAzureCredential`. That keeps credentials out of the code and lets the same code work with Azure CLI authentication locally and managed/workload identity in an Azure environment.
+```bash
+python scripts/audit_assignments.py \
+  --config config/example_assignments.yaml \
+  --output reports/rbac-audit.json
+```
 
-Never commit client secrets, certificates, tokens, or subscription credentials.
+The command does **not** change Azure. It validates the configuration and writes a JSON report.
 
-## Why I built it this way
+## Azure authentication
 
-I kept the Azure API calls behind a small client layer so the validation logic does not need a live Azure subscription to be tested. The policy and validation code can therefore be exercised with normal unit tests.
+The Azure client uses `DefaultAzureCredential`. This supports standard Azure authentication mechanisms such as Azure CLI locally and managed or workload identity in Azure-hosted environments.
 
-The next logical step would be to add Microsoft Entra access-review integration and Azure Resource Graph discovery, but I have intentionally kept this version focused on RBAC automation.
+Never commit client secrets, certificates, tokens, subscription credentials, or generated reports containing sensitive information.
+
+## Code organization
+
+The Azure SDK interaction is isolated in `client.py`. Policy construction lives in `policies.py`, validation lives in `validator.py`, and reporting is handled separately. This keeps the business logic testable without requiring a live Azure subscription.
+
+## CI
+
+GitHub Actions runs:
+
+```text
+Checkout
+   ↓
+Python setup
+   ↓
+Dependency installation
+   ↓
+Python compile check
+   ↓
+pytest
+```
+
+The CI workflow does not require Azure credentials because the unit tests operate on local data.
+
+## Security principles
+
+- Least privilege by default
+- Prefer resource or resource-group scope over subscription-wide permissions
+- Avoid broad roles unless there is a documented requirement
+- Use managed/workload identity instead of static credentials
+- Separate validation from mutation
+- Keep audit output reviewable
+- Test security policy logic before production use
 
 ## Technologies
 
 **Python · Azure SDK · Microsoft Entra ID · Azure RBAC · Managed Identity · YAML · pytest · GitHub Actions**
+
+## Portfolio connection
+
+This repository represents the **identity and security automation layer** of my Cloud / DevOps portfolio:
+
+```text
+Terraform Azure Infrastructure
+             ↓
+        Azure RBAC
+             ↓
+       Azure AKS Platform
+             ↓
+        GitOps / Argo CD
+             ↓
+      SRE / Observability
+```
+
+## Author
+
+**Vasid Shaik**  
+Cloud / DevOps / SRE Engineer
