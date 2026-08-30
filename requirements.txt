@@ -2,3 +2,5 @@ azure-identity>=1.17,<2
 azure-mgmt-authorization>=4.0,<5
 PyYAML>=6.0,<7
 pytest>=8.0,<9
+ruff>=0.8,<1
+mypy>=1.13,<2
